@@ -355,9 +355,10 @@ else()
     message(WARNING "Python3 not found, using python2 as a fallback")
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     if(Python2_VERSION VERSION_LESS 2.7)
-    message(SEND_ERROR "Python 2.7 or newer is required")
+      message(SEND_ERROR "Python 2.7 or newer is required")
+    endif()
   endif()
-
+  
   # Treat python2 as python3
   add_executable(Python3::Interpreter IMPORTED)
   set_target_properties(Python3::Interpreter PROPERTIES
