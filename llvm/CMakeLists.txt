@@ -332,20 +332,37 @@ set(TARGET_TRIPLE "${LLVM_DEFAULT_TARGET_TRIPLE}")
 
 include(HandleLLVMOptions)
 
-# Verify that we can find a Python 2 interpreter.  Python 3 is unsupported.
-# FIXME: We should support systems with only Python 3, but that requires work
-# on LLDB.
-set(Python_ADDITIONAL_VERSIONS 2.7)
-include(FindPythonInterp)
-if( NOT PYTHONINTERP_FOUND )
-  message(FATAL_ERROR
+if(CMAKE_VERSION VERSION_LESS 3.12)
+  include(FindPythonInterp)
+  if(NOT PYTHONINTERP_FOUND)
+    message(FATAL_ERROR
 "Unable to find Python interpreter, required for builds and testing.
 
 Please install Python or specify the PYTHON_EXECUTABLE CMake variable.")
-endif()
+  endif()
 
-if( ${PYTHON_VERSION_STRING} VERSION_LESS 2.7 )
-  message(FATAL_ERROR "Python 2.7 or newer is required")
+  if( ${PYTHON_VERSION_STRING} VERSION_LESS 2.7 )
+    message(FATAL_ERROR "Python 2.7 or newer is required")
+  endif()
+
+  add_executable(Python3::Interpreter IMPORTED)
+  set_target_properties(Python3::Interpreter PROPERTIES
+    IMPORTED_LOCATION ${PYTHON_EXECUTABLE})
+  set(Python3_EXECUTABLE ${PYTHON_EXECUTABLE})
+else()
+  find_package(Python3 COMPONENTS Interpreter)
+  if(NOT Python3_Interpreter_FOUND)
+    message(WARNING "Python3 not found, using python2 as a fallback")
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    if(Python2_VERSION VERSION_LESS 2.7)
+    message(SEND_ERROR "Python 2.7 or newer is required")
+  endif()
+
+  # Treat python2 as python3
+  add_executable(Python3::Interpreter IMPORTED)
+  set_target_properties(Python3::Interpreter PROPERTIES
+    IMPORTED_LOCATION ${Python2_EXECUTABLE})
+  set(Python3_EXECUTABLE ${Python2_EXECUTABLE})
 endif()
 
 ######
@@ -374,7 +391,7 @@ endif (LLVM_USE_OPROFILE)
 
 message(STATUS "Constructing LLVMBuild project information")
 execute_process(
-  COMMAND ${PYTHON_EXECUTABLE} ${LLVMBUILDTOOL}
+  COMMAND ${Python3_EXECUTABLE} ${LLVMBUILDTOOL}
             --native-target "${LLVM_NATIVE_ARCH}"
             --enable-targets "${LLVM_TARGETS_TO_BUILD}"
             --enable-optional-components "${LLVMOPTIONALCOMPONENTS}"
